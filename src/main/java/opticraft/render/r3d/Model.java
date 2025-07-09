@@ -1,14 +1,15 @@
 package opticraft.render.r3d;
 
-import static org.lwjgl.opengl.GL30.*;
-import static org.lwjgl.opengl.GL15.*;
-import static org.lwjgl.opengl.GL20.*;
+import org.lwjgl.system.MemoryUtil;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import org.lwjgl.system.MemoryUtil;
+
+import static org.lwjgl.opengl.GL30.*;
 
 public class Model {
+	private static int currentVao;
+
 	private int vaoId;
 	private int vboId;
 	private int eboId;

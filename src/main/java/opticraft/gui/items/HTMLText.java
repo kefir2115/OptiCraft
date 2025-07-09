@@ -1,10 +1,5 @@
 package opticraft.gui.items;
 
-import opticraft.OptiCraft;
-import opticraft.gui.css.CSSParser;
-import opticraft.gui.css.MultiDim;
-import opticraft.render.overlay.FontRenderer;
-
 public class HTMLText extends HTMLElement {
 
 	public String content;

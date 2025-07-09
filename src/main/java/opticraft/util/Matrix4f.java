@@ -10,16 +10,22 @@ public class Matrix4f {
 		return m;
 	}
 
-	public static float[] translate(float x, float y, float z) {
-		float[] m = identity();
-		m[12] = x;
-		m[13] = y;
-		m[14] = z;
+	public static float[] translate(float[] m, float x, float y, float z) {
+		m[12] += x;
+		m[13] += y;
+		m[14] += z;
 		return m;
 	}
 
+	public static float[] translate(float x, float y, float z) {
+		return translate(identity(), x, y, z);
+	}
+
 	public static float[] rotate(float angle, float x, float y, float z) {
-		float[] m = identity();
+		return rotate(identity(), angle, x, y, z);
+	}
+
+	public static float[] rotate(float[] m, float angle, float x, float y, float z) {
 		float r = angle;
 		float c = (float) cos(r);
 		float s = (float) sin(r);

@@ -1,45 +1,40 @@
 package opticraft;
 
-import fr.litarvan.openauth.microsoft.MicrosoftAuthResult;
 import opticraft.gui.HTMLCalculator;
 import opticraft.gui.HTMLGui;
-import opticraft.gui.HTMLParser;
-import opticraft.gui.css.CSSParser;
 import opticraft.network.PacketUtils;
-import opticraft.render.Shader;
-import opticraft.render.overlay.Rect;
-import opticraft.render.r3d.Model;
-import opticraft.util.OBJLoader;
-import opticraft.util.Window;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.glfw.*;
-import org.lwjgl.opengl.*;
 import opticraft.render.overlay.FontRenderer;
+import opticraft.render.overlay.Rect;
 import opticraft.util.Accounts;
+import opticraft.util.Camera;
 import opticraft.util.Matrix4f;
-
-import java.awt.*;
-import java.io.IOException;
-import java.nio.DoubleBuffer;
-import java.util.ArrayList;
+import opticraft.util.Window;
+import opticraft.world.World;
+import opticraft.world.WorldRenderer;
+import org.joml.Vector3f;
+import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.opengl.GL;
 
 import static org.lwjgl.glfw.Callbacks.glfwFreeCallbacks;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL20.*;
-import static org.lwjgl.system.MemoryUtil.*;
+import static org.lwjgl.system.MemoryUtil.NULL;
 
 public class OptiCraft {
 	public Window window;
+	public Camera camera;
 	private int width = 1000, height = 600;
-	private int shaderProgram;
-	private float angle = 0.0f;
 	private HTMLGui gui;
+	public World world;
 
 	public Accounts acc;
 	public FontRenderer font;
 	public PacketUtils pack;
 	public HTMLCalculator htmlCalculator;
-	private ArrayList<Model> models;
+	public WorldRenderer worldRenderer;
+	float[] projection = new float[16];
+
+	long lastUpdate = -1;
 
 	private static OptiCraft i;
 	public static OptiCraft get() { return i; }
@@ -56,6 +51,8 @@ public class OptiCraft {
 		pack = new PacketUtils();
 		htmlCalculator = new HTMLCalculator();
 
+		camera = new Camera(new Vector3f(0, 0, 0));
+
 		init();
 		loop();
 
@@ -63,9 +60,7 @@ public class OptiCraft {
 		glfwDestroyWindow(window.gl);
 		glfwTerminate();
 		glfwSetErrorCallback(null).free();
-		for(Model m : models) {
-			m.cleanup();
-		}
+
 		font.cleanup();
 	}
 
@@ -84,13 +79,22 @@ public class OptiCraft {
 		window.w = width;
 		window.h = height;
 
+		setProjection();
+
 		glfwSetWindowSizeCallback(window.gl, (w, width, height) -> {
-			window.w = width;
-			window.h = height;
+			window.w = this.width = width;
+			window.h = this.height = height;
+
+			setProjection();
 		});
 		glfwSetCursorPosCallback(window.gl, (w, xpos, ypos) -> {
+			float dx = (float) (xpos - window.m.x);
+			float dy = (float) (ypos - window.m.y);
+
 			window.m.x = (int) xpos;
 			window.m.y = (int) ypos;
+
+			camera.processMouseMovement(dx, dy);
 		});
 
 		glfwMakeContextCurrent(window.gl);
@@ -99,14 +103,7 @@ public class OptiCraft {
 		GL.createCapabilities();
 
 		try {
-			shaderProgram = new Shader("assets/shaders/model").shaderId;
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-
-		try {
-			models = new ArrayList<>();
-			models.add(OBJLoader.loadModel("assets/objects/block.obj"));
+			worldRenderer = new WorldRenderer();
 
 			font = new FontRenderer("assets/fonts/font.ttf");
 		} catch(Exception e) {
@@ -171,49 +168,71 @@ public class OptiCraft {
     					background: #f00;
     				}
 				""");
+//		gui = null;
+//		world = new World();
 	}
 	private void loop() {
 		glEnable(GL_DEPTH_TEST);
 
+		long currentTime = System.nanoTime();
+
 		while (!glfwWindowShouldClose(window.gl)) {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			glUseProgram(shaderProgram);
 
-			angle += 0.01f;
-			float[] model = new float[16];
-			float[] view = new float[16];
-			float[] projection = new float[16];
+			if(world!=null) {
+				world.animate();
 
-			model = Matrix4f.rotate(angle, 0.5f, 1.0f, 0.0f);
-			view = Matrix4f.translate(0.0f, 0.0f, -10.0f);
-			projection = Matrix4f.perspective(45.0f, (float) width / height, 0.1f, 100.0f);
+				worldRenderer.renderWorld(world, camera.getViewMatrix().get(new float[16]), projection);
 
-			int modelLoc = glGetUniformLocation(shaderProgram, "model");
-			int viewLoc = glGetUniformLocation(shaderProgram, "view");
-			int projLoc = glGetUniformLocation(shaderProgram, "projection");
+				float deltaTime = (currentTime - lastUpdate);
 
-			glUniformMatrix4fv(modelLoc, false, model);
-			glUniformMatrix4fv(viewLoc, false, view);
-			glUniformMatrix4fv(projLoc, false, projection);
+				boolean forward = glfwGetKey(window.gl, GLFW_KEY_W) == GLFW_PRESS;
+				boolean backward = glfwGetKey(window.gl, GLFW_KEY_S) == GLFW_PRESS;
+				boolean left = glfwGetKey(window.gl, GLFW_KEY_A) == GLFW_PRESS;
+				boolean right = glfwGetKey(window.gl, GLFW_KEY_D) == GLFW_PRESS;
+				boolean up = glfwGetKey(window.gl, GLFW_KEY_SPACE) == GLFW_PRESS;
+				boolean down = glfwGetKey(window.gl, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS;
 
-			for(Model m : models) {
-				m.render();
+				camera.processKeyboard(forward, backward, left, right, up, down, deltaTime);
 			}
-
-			glUseProgram(0);
-
 			renderOverlay();
 
 			glfwSwapBuffers(window.gl);
 			glfwPollEvents();
 		}
+
+		lastUpdate = currentTime;
 	}
 
 	private void renderOverlay() {
+		glUseProgram(0);
 		glViewport(0, 0, window.w, window.h);
 		if(gui != null) {
 			gui.render(window);
 		}
+
+		font.renderText(
+				String.format("XYZ: %s / %s / %s", camera.getPosition().x, camera.getPosition().y, camera.getPosition().z),
+				0, 0, 1
+		);
+		font.renderText(
+				String.format("ROT: %s / %S", camera.yaw, camera.pitch),
+				0, FontRenderer.FONT_SIZE + 5, 1
+		);
+	}
+
+	public void setGui(HTMLGui gui) {
+		if(this.gui != null) this.gui.onClose();
+		this.gui = gui;
+		this.gui.onOpen();
+
+		if(this.gui != null) glfwSetInputMode(window.gl, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		else glfwSetInputMode(window.gl, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	}
+
+
+	private void setProjection() {
+		projection = Matrix4f.perspective(45.0f, (float) width / height, 0.1f, 100.0f);
 	}
 
 	public static void main(String[] args) {

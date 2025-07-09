@@ -2,16 +2,11 @@ package opticraft.gui;
 
 import opticraft.OptiCraft;
 import opticraft.gui.css.CSSParser;
-import opticraft.gui.css.CSSSelector;
 import opticraft.gui.css.ElementCSS;
 import opticraft.gui.items.HTMLElement;
-import opticraft.gui.items.HTMLText;
 import opticraft.util.Window;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 
 public class HTMLGui {
 
@@ -42,6 +37,9 @@ public class HTMLGui {
 			this.update = false;
 		}
 
-		HTMLParser.render(this.body);
+		HTMLRenderer.render(this.body);
 	}
+
+	public void onClose() {}
+	public void onOpen() {}
 }

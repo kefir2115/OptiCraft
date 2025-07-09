@@ -10,23 +10,34 @@ public class BlockPos {
 	private static final long Y_MASK = (1L << NUM_Y_BITS) - 1L;
 	private static final long Z_MASK = (1L << NUM_Z_BITS) - 1L;
 
-	int x, y, z;
+	long pos;
 
 	public BlockPos(int x, int y, int z) {
-		this.x = x;
-		this.y = y;
-		this.z = z;
+		pos = ((long)x & X_MASK) << X_SHIFT | ((long)y & Y_MASK) << Y_SHIFT | ((long) z & Z_MASK);
 	}
 
-	public long toLong()
+	public BlockPos(long l) {
+		this.pos = l;
+	}
+
+	public long getPos()
 	{
-		return ((long)x & X_MASK) << X_SHIFT | ((long)y & Y_MASK) << Y_SHIFT | ((long) z & Z_MASK);
+		return this.pos;
 	}
 
-	public static BlockPos fromLong(long l) {
-		int i = (int)(l << 64 - X_SHIFT - NUM_X_BITS >> 64 - NUM_X_BITS);
-		int j = (int)(l << 64 - Y_SHIFT - NUM_Y_BITS >> 64 - NUM_Y_BITS);
-		int k = (int)(l << 64 - NUM_Z_BITS >> 64 - NUM_Z_BITS);
-		return new BlockPos(i, j, k);
+	public int getX() {
+		return (int)(pos << 64 - X_SHIFT - NUM_X_BITS >> 64 - NUM_X_BITS);
+	}
+
+	public int getY() {
+		return (int)(pos << 64 - Y_SHIFT - NUM_Y_BITS >> 64 - NUM_Y_BITS);
+	}
+
+	public int getZ() {
+		return (int)(pos << 64 - NUM_Z_BITS >> 64 - NUM_Z_BITS);
+	}
+
+	public float[] getModelMatrix() {
+		return Matrix4f.translate(getX(), getY(), getZ());
 	}
 }
